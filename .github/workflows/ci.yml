@@ -1,45 +1,25 @@
 name: Spring Boot CI Pipeline
-
 on:
   push:
     branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
-
-# 워크플로우 레벨에서 권한 설정
-permissions:
-  contents: read # 코드 체크아웃을 위해 필요
-  pull-requests: write # SonarCloud PR Decoration (상태 업데이트, 댓글)을 위해 필요
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # SonarCloud PR 분석을 위해 전체 Git 히스토리 필요
-
-      - name: Clear Gradle Caches (Diagnostic) # 여기에 추가
-        run: |
-          rm -rf ~/.gradle/caches/
-          rm -rf ~/.sonar/cache/
-          rm -rf build/ # 프로젝트 내 빌드 디렉토리도 제거
-          rm -rf .gradle/ # 프로젝트 내 Gradle Wrapper 캐시도 제거
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
       - name: Clean build directory
         run: ./gradlew clean
-
       - name: Run Tests
         run: ./gradlew test --continue
         env:
@@ -48,31 +28,31 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
       - name: Generate Test Coverage Report
         run: ./gradlew jacocoTestReport
-
       - name: Build Project (without tests)
         run: ./gradlew build -x test
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL }}
-
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: build/test-results/test/*.xml
-
       - name: Upload Test Coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-coverage
           path: build/reports/jacoco/test/jacocoTestReport.xml
-
       - name: Analyze with SonarQube
-        if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: |
-          ./gradlew sonar --debug --stacktrace
+          ./gradlew sonarqube \
+          -Dsonar.projectKey=ECommerceCommunity_FeedShop_Backend \
+          -Dsonar.projectName="FeedShop_Backend" \
+          -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.organization=ecommercecommunity
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL }}
