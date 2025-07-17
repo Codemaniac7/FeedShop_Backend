@@ -63,9 +63,12 @@ jobs:
       - name: Analyze with SonarQube
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: |
-          ./gradlew sonar --debug --stacktrace
+          ./gradlew sonarqube \
+          -Dsonar.projectKey=ECommerceCommunity_FeedShop_Backend \
+          -Dsonar.projectName="FeedShop_Backend" \
+          -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.organization=ecommercecommunity
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL }}
