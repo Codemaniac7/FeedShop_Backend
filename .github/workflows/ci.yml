@@ -6,19 +6,13 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
 
-# 워크플로우 레벨에서 권한 설정 (이전과 동일하게 유지)
-permissions:
-  contents: read # 코드 체크아웃을 위해 필요
-  pull-requests: write # SonarCloud PR Decoration (상태 업데이트, 댓글)을 위해 필요
-
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # 이 설정은 반드시 유지합니다!
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -39,7 +33,6 @@ jobs:
           SPRING_PROFILES_ACTIVE: test
           APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-
       - name: Generate Test Coverage Report
         run: ./gradlew jacocoTestReport
 
@@ -56,30 +49,18 @@ jobs:
           name: test-results
           path: build/test-results/test/*.xml
 
-      - name: Upload Test Coverage
+      - name: Upload Test Coverage # 테스트 커버리지 보고서 아티팩트를 업로드합니다.
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-coverage
           path: build/reports/jacoco/test/jacocoTestReport.xml
 
-      - name: Analyze with SonarQube # 스텝 이름을 유지하되 명령어와 env를 수정
-        # PR 이벤트일 경우에만 추가적인 PR 관련 속성들을 전달합니다.
-        # GITHUB_REF는 refs/pull/<PR_NUMBER>/merge 또는 refs/pull/<PR_NUMBER>/head 형태로 제공됩니다.
-        # GITHUB_HEAD_REF는 PR의 소스 브랜치 이름입니다.
-        # GITHUB_BASE_REF는 PR의 대상 브랜치 이름입니다.
+      - name: Analyze with SonarQube
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # PR 분석에 필요한 속성들을 -D 옵션으로 명시적으로 전달
-            ./gradlew sonar \
-              -Dsonar.pullrequest.key=${{ github.event.number }} \
-              -Dsonar.pullrequest.branch=${{ github.head_ref }} \
-              -Dsonar.pullrequest.base=${{ github.base_ref }} \
-              -Dsonar.pullrequest.github.token=${{ secrets.GITHUB_TOKEN }}
-          else
-            # push 이벤트 (main/develop 브랜치)의 경우 일반 분석
-            ./gradlew sonar
-          fi
+          ./gradlew sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # JWT_SECRET 및 APP_VERIFICATION_URL은 이 스텝에서 필요 없으므로 제거
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL }}
