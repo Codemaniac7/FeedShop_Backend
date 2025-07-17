@@ -20,6 +20,12 @@ jobs:
         with:
           fetch-depth: 0 # SonarCloud PR 분석을 위해 전체 Git 히스토리 필요
 
+      - name: Clear Gradle Caches (Diagnostic) # 여기에 추가
+        run: |
+          rm -rf ~/.gradle/caches/
+          rm -rf ~/.sonar/cache/
+
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
