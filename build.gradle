@@ -93,11 +93,6 @@ sourceSets {
 	}
 }
 
-// Gradle 8.x 이상에서는 annotationProcessorGeneratedSourcesDirectory 옵션 제거
-// tasks.withType(JavaCompile).configureEach {
-// 	options.annotationProcessorGeneratedSourcesDirectory = querydslDir.get().asFile
-// }
-
 tasks.register('cleanQuerydsl', Delete) {
 	delete querydslDir
 }
@@ -109,9 +104,9 @@ clean {
 jacocoTestReport {
 	dependsOn test // jacocoTestReport 태스크가 test 태스크 실행 이후에 실행되도록 의존성 설정
 	reports {
-		xml.required = true // SonarCloud가 읽을 수 있도록 XML 리포트 필수
+		xml.required = true
 		csv.required = false
-		html.required = true // 사람이 읽기 쉬운 HTML 리포트도 생성 (선택 사항)
+		html.required = true
 	}
 	// 보고서가 생성될 경로 설정 (SonarCloud에서 이 경로를 참조하게 됨)
 	// destinationFile = file("${buildDir}/reports/jacoco/test/jacocoTestReport.xml") // 기본 경로와 동일하면 명시하지 않아도 됨
