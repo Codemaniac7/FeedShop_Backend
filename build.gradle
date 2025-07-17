@@ -129,5 +129,13 @@ sonar {
 		// 분석에서 제외할 파일이나 디렉토리를 지정할 수 있습니다. (선택 사항)
 		// property "sonar.exclusions", "**/generated/**, **/*.html"
 		// property "sonar.test.exclusions", "**/*Test.java" // 테스트 파일 제외 예시
+
+		// GitHub Actions에서 풀 리퀘스트 속성을 동적으로 설정
+		if (System.getenv('GITHUB_EVENT_NAME') == 'pull_request') {
+			property 'sonar.pullrequest.key', System.getenv('GITHUB_PULL_REQUEST_NUMBER') ?: ''
+			property 'sonar.pullrequest.branch', System.getenv('GITHUB_HEAD_REF') ?: ''
+			property 'sonar.pullrequest.base', System.getenv('GITHUB_BASE_REF') ?: ''
+			property 'sonar.pullrequest.github.repository', System.getenv('GITHUB_REPOSITORY') ?: ''
+		}
 	}
 }

@@ -63,10 +63,10 @@ jobs:
           name: test-coverage
           path: build/reports/jacoco/test/jacocoTestReport.xml
 
-      - name: Analyze with SonarCloud # SonarCloud 공식 액션 사용
-        uses: SonarSource/sonarcloud-github-action@v2.2 # 최신 버전을 확인하고 사용하세요.
+      - name: Analyze with SonarQube
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: |
+          ./gradlew sonar --debug
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHub Actions에서 제공하는 기본 토큰
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # SonarCloud 인증 토큰
-        # build.gradle에 sonar.projectKey, sonar.organization, sonar.host.url 등이
-        # 이미 설정되어 있으므로 별도의 with: 파라미터는 필요 없음.
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
