@@ -71,7 +71,7 @@ jobs:
       - name: Analyze with SonarQube
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: |
-          ./gradlew sonar --debug
+          ./gradlew sonar --debug --stacktrace
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
