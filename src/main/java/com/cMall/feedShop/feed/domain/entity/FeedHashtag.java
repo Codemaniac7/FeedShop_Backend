@@ -16,7 +16,7 @@ public class FeedHashtag extends BaseTimeEntity {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "tag_id")
+    @Column(name = "hashtag_id")
     private Long id;
     
     @ManyToOne(fetch = FetchType.LAZY)
