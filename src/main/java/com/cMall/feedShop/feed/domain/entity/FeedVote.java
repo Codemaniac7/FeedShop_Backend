@@ -22,7 +22,7 @@ public class FeedVote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "feed_vote_id")
+    @Column(name = "vote_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
