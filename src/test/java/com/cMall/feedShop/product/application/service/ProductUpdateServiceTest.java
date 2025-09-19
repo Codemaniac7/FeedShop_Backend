@@ -43,6 +43,9 @@ class ProductUpdateServiceTest {
     @Mock
     private ProductImageService productImageService;
 
+    @Mock
+    private ProductCacheService productCacheService;
+
     @InjectMocks
     private ProductUpdateService productUpdateService;
 
@@ -126,6 +129,7 @@ class ProductUpdateServiceTest {
         verify(productImageService).replaceImageRecords(testProduct, uploadedMainUrls, ImageType.MAIN);
         verify(productImageService).replaceImageRecords(testProduct, uploadedDetailUrls, ImageType.DETAIL);
         verify(productRepository).save(testProduct);
+        verify(productCacheService).evictOnProductUpdate();
 
         // 보상 트랜잭션은 호출되지 않음
         verify(productImageService, never()).deleteUploadedImages(any());
@@ -204,5 +208,6 @@ class ProductUpdateServiceTest {
         verify(productImageService, never()).replaceImageRecords(any(), any(), any());
         verify(productImageService, never()).deleteUploadedImages(any());
         verify(productRepository).save(testProduct);
+        verify(productCacheService).evictOnProductUpdate();
     }
 }
