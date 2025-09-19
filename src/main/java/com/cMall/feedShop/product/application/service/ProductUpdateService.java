@@ -24,7 +24,7 @@ public class ProductUpdateService {
     private final ProductRepository productRepository;
     private final ProductHelper productHelper;
     private final ProductImageService productImageService;
-    private final ProductCacheEvictService productCacheEvictService;
+    private final ProductCacheService productCacheService;
 
     public void updateProduct(Long productId, ProductUpdateRequest request, List<MultipartFile> mainImages, List<MultipartFile> detailImages, String loginId) {
         List<String> uploadedImageUrls = new ArrayList<>();
@@ -100,6 +100,6 @@ public class ProductUpdateService {
         productRepository.save(product);
 
         // 캐시 무효화 (상품 정보가 변경되었으므로 관련 캐시 갱신)
-        productCacheEvictService.evictOnProductUpdate();
+        productCacheService.evictOnProductUpdate();
     }
 }

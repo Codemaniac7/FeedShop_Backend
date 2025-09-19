@@ -14,7 +14,7 @@ public class ProductDeleteService {
 
     private final ProductRepository productRepository;
     private final ProductHelper productHelper;
-    private final ProductCacheEvictService productCacheEvictService;
+    private final ProductCacheService productCacheService;
 
     public void deleteProduct(Long productId, String loginId) {
         // 1. 현재 사용자 정보 가져오기 및 권한 검증
@@ -33,6 +33,6 @@ public class ProductDeleteService {
         product.delete();
 
         // 6. 캐시 무효화 (상품이 삭제되었으므로 관련 캐시 갱신)
-        productCacheEvictService.evictOnProductDelete();
+        productCacheService.evictOnProductDelete();
     }
 }

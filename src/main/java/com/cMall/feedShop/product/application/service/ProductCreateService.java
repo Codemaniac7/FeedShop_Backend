@@ -22,7 +22,7 @@ public class ProductCreateService {
 
     private final ProductRepository productRepository;
     private final ProductHelper productHelper;
-    private final ProductCacheEvictService productCacheEvictService;
+    private final ProductCacheService productCacheService;
 
     public ProductCreateResponse createProduct(ProductCreateRequest request, List<MultipartFile> mainImages, List<MultipartFile> detailImages, String loginId) {
         // 1. 현재 사용자 정보 가져오기 및 권한 검증
@@ -62,7 +62,7 @@ public class ProductCreateService {
         Product savedProduct = productRepository.save(product);
 
         // 10. 캐시 무효화 (새 상품이 추가되었으므로 베스트 상품 목록 갱신)
-        productCacheEvictService.evictOnProductCreate();
+        productCacheService.evictOnProductCreate();
 
         // 11. 응답값 리턴
         return ProductCreateResponse.of(savedProduct.getProductId());
