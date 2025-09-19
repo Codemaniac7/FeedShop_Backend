@@ -1,17 +1,75 @@
 package com.cMall.feedShop.config;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
+    @Value("${spring.cache.redis.enabled:true}")
+    private boolean redisEnabled;
+
+    /**
+     * Caffeine 캐시 매니저 (L1 캐시)
+     * - 애플리케이션 레벨 캐시
+     * - 매우 빠른 응답속도
+     */
     @Bean
-    public CacheManager cacheManager() {
-        return new ConcurrentMapCacheManager("availableEvents");
+    @Primary
+    public CacheManager caffeineCacheManager() {
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager();
+        cacheManager.setCaffeine(Caffeine.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(30, TimeUnit.MINUTES)
+                .recordStats());
+        
+        // 캐시 이름 등록
+        cacheManager.setCacheNames(java.util.List.of(
+                "categories",           // 카테고리 목록
+                "bestProducts",         // 베스트 상품 목록
+                "popularProducts",      // 인기 상품 페이지
+                "availableEvents"       // 이벤트 (기존)
+        ));
+        
+        return cacheManager;
+    }
+
+    /**
+     * Redis 캐시 매니저 (L2 캐시)
+     * - 분산 캐시
+     * - 여러 인스턴스 간 데이터 공유
+     */
+    @Bean
+    public CacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory) {
+        if (!redisEnabled) {
+            return null;
+        }
+
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofHours(1))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new GenericJackson2JsonRedisSerializer()));
+
+        return RedisCacheManager.builder(redisConnectionFactory)
+                .cacheDefaults(config)
+                .build();
     }
 } 
