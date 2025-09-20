@@ -32,6 +32,9 @@ class ProductDeleteServiceTest {
     @Mock
     private ProductHelper productHelper;
 
+    @Mock
+    private ProductCacheService productCacheService;
+
     @InjectMocks
     private ProductDeleteService productDeleteService;
 
@@ -76,6 +79,7 @@ class ProductDeleteServiceTest {
         verify(productHelper).validateSellerRole(sellerUser);
         verify(productHelper).getProductOwnership(1L, 1L);
         verify(productHelper).validateProductNotInOrder(testProduct);
+        verify(productCacheService).evictOnProductDelete();
     }
 
     @Test

@@ -41,6 +41,9 @@ class ProductCreateServiceTest {
     private ProductHelper productHelper;
 
     @Mock
+    private ProductCacheService productCacheService;
+
+    @Mock
     private MultipartFile mainImage;
 
     @Mock
@@ -112,6 +115,7 @@ class ProductCreateServiceTest {
         verify(productHelper).getUserStore(1L);
         verify(productHelper).getCategory(1L);
         verify(productRepository).save(any(Product.class));
+        verify(productCacheService).evictOnProductCreate();
     }
 
     @Test
