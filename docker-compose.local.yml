@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mysql-dev:
+    image: mysql:8.0
+    container_name: mysql-dev
+    ports:
+      - "3308:3306"  # 로컬 MySQL과 충돌 방지
+    environment:
+      MYSQL_ROOT_PASSWORD: dev123!!
+      MYSQL_DATABASE: feedshop_dev
+      MYSQL_USER: devuser
+      MYSQL_PASSWORD: dev123!!
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis-dev:
+    image: redis:7-alpine
+    container_name: redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    hostname: redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis-dev:6379
+    depends_on:
+      - redis-dev
+    restart: unless-stopped
+
+volumes:
+  mysql_dev_data:
+  redis_dev_data:
