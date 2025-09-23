@@ -22,7 +22,7 @@ chmod +x scripts/test-cache-local.sh
 
 ```bash
 # 1단계: 로컬 MySQL + Redis 실행
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f docker-compose.local.yml up -d
 
 # 2단계: 로컬 프로파일로 애플리케이션 실행
 ./gradlew bootRun --args='--spring.profiles.active=local'
