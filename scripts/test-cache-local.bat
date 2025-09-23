@@ -1,48 +1,48 @@
 @echo off
-echo ğŸš€ ë¡œì»¬ ìºì‹œ í…ŒìŠ¤íŠ¸ í™˜ê²½ ì„¤ì •
+echo ·ÎÄÃ Ä³½Ã Å×½ºÆ® È¯°æ ¼³Á¤
 
-REM 1. Docker ì„œë¹„ìŠ¤ ì‹œì‘
-echo ğŸ“¦ Docker ì„œë¹„ìŠ¤ ì‹œì‘ ì¤‘...
-docker-compose -f docker-compose.dev.yml up -d
+REM 1. Docker ¼­ºñ½º ½ÃÀÛ
+echo Docker ¼­ºñ½º ½ÃÀÛ Áß...
+docker-compose -f ..\docker-compose.dev.yml up -d
 
-REM 2. ì„œë¹„ìŠ¤ í—¬ìŠ¤ì²´í¬ ëŒ€ê¸°
-echo â³ ì„œë¹„ìŠ¤ ì¤€ë¹„ ëŒ€ê¸° ì¤‘...
+REM 2. ¼­ºñ½º Çï½ºÃ¼Å© ´ë±â
+echo ¼­ºñ½º ÁØºñ ´ë±â Áß...
 timeout /t 10 /nobreak > nul
 
-REM 3. MySQL ì—°ê²° í…ŒìŠ¤íŠ¸
-echo ğŸ—„ï¸ MySQL ì—°ê²° í…ŒìŠ¤íŠ¸...
+REM 3. MySQL ¿¬°á Å×½ºÆ®
+echo MySQL ¿¬°á Å×½ºÆ®...
 docker exec mysql-dev mysqladmin ping -h localhost -u devuser -pdev123!!
 if %errorlevel% neq 0 (
-    echo âŒ MySQL ì—°ê²° ì‹¤íŒ¨
+    echo ? MySQL ¿¬°á ½ÇÆĞ
     exit /b 1
 )
 
-REM 4. Redis ì—°ê²° í…ŒìŠ¤íŠ¸
-echo ğŸ”´ Redis ì—°ê²° í…ŒìŠ¤íŠ¸...
+REM 4. Redis ¿¬°á Å×½ºÆ®
+echo Redis ¿¬°á Å×½ºÆ®...
 docker exec redis-dev redis-cli ping
 if %errorlevel% neq 0 (
-    echo âŒ Redis ì—°ê²° ì‹¤íŒ¨
+    echo ? Redis ¿¬°á ½ÇÆĞ
     exit /b 1
 )
 
-echo âœ… ëª¨ë“  ì„œë¹„ìŠ¤ê°€ ì¤€ë¹„ë˜ì—ˆìŠµë‹ˆë‹¤!
+echo  ¸ğµç ¼­ºñ½º°¡ ÁØºñµÇ¾ú½À´Ï´Ù!
 echo.
-echo ğŸ¯ ë‹¤ìŒ ëª…ë ¹ì–´ë¡œ ì• í”Œë¦¬ì¼€ì´ì…˜ì„ ì‹¤í–‰í•˜ì„¸ìš”:
+echo  ´ÙÀ½ ¸í·É¾î·Î ¾ÖÇÃ¸®ÄÉÀÌ¼ÇÀ» ½ÇÇàÇÏ¼¼¿ä:
 echo    gradlew bootRun --args="--spring.profiles.active=local"
 echo.
-echo ğŸ“Š í…ŒìŠ¤íŠ¸ URL:
-echo    - ë² ìŠ¤íŠ¸ ìƒí’ˆ: http://localhost:8080/api/products/best
-echo    - ì¹´í…Œê³ ë¦¬: http://localhost:8080/api/products/categories
-echo    - ìºì‹œ í†µê³„: http://localhost:8080/api/admin/cache/stats
+echo  Å×½ºÆ® URL:
+echo    - º£½ºÆ® »óÇ°: http://localhost:8080/api/products/best
+echo    - Ä«Å×°í¸®: http://localhost:8080/api/products/categories
+echo    - Ä³½Ã Åë°è: http://localhost:8080/api/admin/cache/stats
 echo    - Redis Commander: http://localhost:8081
-echo    - ì—…ë¡œë“œëœ íŒŒì¼: http://localhost:8080/local-uploads/
+echo    - ¾÷·ÎµåµÈ ÆÄÀÏ: http://localhost:8080/local-uploads/
 echo.
-echo ğŸ§ª ìºì‹œ í…ŒìŠ¤íŠ¸ ëª…ë ¹ì–´:
+echo  Ä³½Ã Å×½ºÆ® ¸í·É¾î:
 echo    curl http://localhost:8080/api/products/best?limit=5
 echo    curl http://localhost:8080/api/products/categories
 echo    curl http://localhost:8080/api/admin/cache/stats
 echo.
-echo ğŸ›‘ í…ŒìŠ¤íŠ¸ ì™„ë£Œ í›„ ì •ë¦¬:
-echo    docker-compose -f docker-compose.dev.yml down
+echo  Å×½ºÆ® ¿Ï·á ÈÄ Á¤¸®:
+echo    docker-compose -f ..\docker-compose.dev.yml down
 
 pause

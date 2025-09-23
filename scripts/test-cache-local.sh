@@ -4,7 +4,7 @@ echo "🚀 로컬 캐시 테스트 환경 설정"
 
 # 1. Docker 서비스 시작
 echo "📦 Docker 서비스 시작 중..."
-docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f ../docker-compose.dev.yml up -d
 
 # 2. 서비스 헬스체크 대기
 echo "⏳ 서비스 준비 대기 중..."
@@ -42,4 +42,4 @@ echo "   curl http://localhost:8080/api/products/categories"
 echo "   curl http://localhost:8080/api/admin/cache/stats"
 echo ""
 echo "🛑 테스트 완료 후 정리:"
-echo "   docker-compose -f docker-compose.dev.yml down"
+echo "   docker-compose -f ../docker-compose.dev.yml down"
