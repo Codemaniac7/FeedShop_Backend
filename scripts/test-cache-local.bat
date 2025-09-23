@@ -4,7 +4,7 @@ echo 🚀 로컬 캐시 테스트 환경 설정
 
 REM 1. Docker 서비스 시작
 echo 📦 Docker 서비스 시작 중...
-docker-compose -f docker-compose.local.yml up -d
+docker-compose -f ../docker-compose.local.yml up -d
 
 REM 2. 서비스 헬스체크 대기
 echo ⏳ 서비스 준비 대기 중...
@@ -46,6 +46,6 @@ echo.
 echo 💡 로컬 환경(local 프로파일)에서는 모든 API가 인증 없이 접근 가능합니다.
 echo.
 echo 🛑 테스트 완료 후 정리:
-echo    docker-compose -f docker-compose.local.yml down
+echo    docker-compose -f ../docker-compose.local.yml down
 
 pause
