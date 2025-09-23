@@ -14,8 +14,26 @@ services:
     networks:
       - springboot-network
     restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      - redis_data:/data
+    networks:
+      - springboot-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 volumes:
   mysql_data:
+  redis_data:
 
 networks:
   springboot-network:

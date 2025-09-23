@@ -25,6 +25,18 @@ public class CacheConfig {
     @Value("${spring.cache.redis.enabled:true}")
     private boolean redisEnabled;
 
+    @Value("${spring.cache.caffeine.maximum-size:1000}")
+    private long caffeineMaximumSize;
+
+    @Value("${spring.cache.caffeine.expire-after-write:30}")
+    private long caffeineExpireAfterWriteMinutes;
+
+    @Value("${spring.cache.caffeine.record-stats:true}")
+    private boolean caffeineRecordStats;
+
+    @Value("${spring.cache.redis.time-to-live:60}")
+    private long redisTtlMinutes;
+
     /**
      * Caffeine 캐시 매니저 (L1 캐시)
      * - 애플리케이션 레벨 캐시
@@ -34,10 +46,16 @@ public class CacheConfig {
     @Primary
     public CacheManager caffeineCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
-        cacheManager.setCaffeine(Caffeine.newBuilder()
-                .maximumSize(1000)
-                .expireAfterWrite(30, TimeUnit.MINUTES)
-                .recordStats());
+        
+        Caffeine<Object, Object> caffeineBuilder = Caffeine.newBuilder()
+                .maximumSize(caffeineMaximumSize)
+                .expireAfterWrite(caffeineExpireAfterWriteMinutes, TimeUnit.MINUTES);
+        
+        if (caffeineRecordStats) {
+            caffeineBuilder.recordStats();
+        }
+        
+        cacheManager.setCaffeine(caffeineBuilder);
         
         // 캐시 이름 등록
         cacheManager.setCacheNames(java.util.List.of(
@@ -62,7 +80,7 @@ public class CacheConfig {
         }
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(1))
+                .entryTtl(Duration.ofMinutes(redisTtlMinutes))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
