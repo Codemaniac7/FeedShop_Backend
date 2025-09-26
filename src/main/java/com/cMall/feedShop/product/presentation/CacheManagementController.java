@@ -98,9 +98,9 @@ public class CacheManagementController {
             )
     })
     @GetMapping("/stats")
-    @ApiResponseFormat(message = "캐시 통계 정보를 성공적으로 조회했습니다.")
-    public ApiResponse<Void> getCacheStats() {
-        productCacheService.logCacheStats();
-        return ApiResponse.success(null);
+    @ApiResponseFormat(message = "Cache statistics retrieved successfully.")
+    public ApiResponse<Object> getCacheStats() {
+        Object stats = productCacheService.getCacheStats();
+        return ApiResponse.success(stats);
     }
 }

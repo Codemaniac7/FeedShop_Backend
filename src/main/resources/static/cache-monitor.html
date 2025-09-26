@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache Performance Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .stat-item { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 6px; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #007bff; }
+        .stat-label { color: #666; margin-top: 5px; }
+        .chart-container { width: 100%; height: 400px; }
+        .controls { margin: 20px 0; text-align: center; }
+        button { padding: 10px 20px; margin: 0 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Cache Performance Monitor</h1>
+        
+        <div class="controls">
+            <button onclick="refreshStats()">Refresh Stats</button>
+            <button onclick="clearCache()">Clear All Cache</button>
+            <button onclick="toggleAutoRefresh()">Toggle Auto Refresh</button>
+            <span id="autoRefreshStatus">Auto Refresh: OFF</span>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <div class="card">
+            <h2>📊 Cache Statistics</h2>
+            <div id="cacheStats" class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">Loading...</div>
+                    <div class="stat-label">Loading cache data...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Performance Chart</h2>
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🧪 Quick Tests</h2>
+            <button onclick="testBestProducts()">Test Best Products</button>
+            <button onclick="testCategories()">Test Categories</button>
+            <button onclick="performanceTest()">Performance Test</button>
+            <div id="testResults" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let performanceChart = null;
+        let performanceData = [];
+
+        // Initialize chart
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: [],
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Response Time (ms)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Request Number'
+                        }
+                    }
+                }
+            }
+        });
+
+        async function refreshStats() {
+            try {
+                const response = await fetch('/api/admin/cache/stats');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayCacheStats(result.data);
+                    showStatus('Cache stats refreshed successfully', 'success');
+                } else {
+                    showStatus('Failed to refresh cache stats', 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        function displayCacheStats(stats) {
+            const container = document.getElementById('cacheStats');
+            container.innerHTML = '';
+
+            for (const [cacheName, cacheData] of Object.entries(stats)) {
+                // 이중 캐시와 단일 캐시 구분
+                const isL1L2 = cacheData.type && cacheData.type.includes('Tiered');
+                const hitRate = isL1L2 ? (cacheData.l1HitRate || 0) : (cacheData.hitRate || 0);
+                const requestCount = isL1L2 ? (cacheData.l1RequestCount || 0) : (cacheData.requestCount || 0);
+                const hitCount = isL1L2 ? (cacheData.l1HitCount || 0) : (cacheData.hitCount || 0);
+                const missCount = isL1L2 ? (cacheData.l1MissCount || 0) : (cacheData.missCount || 0);
+                const size = isL1L2 ? (cacheData.l1Size || 0) : (cacheData.size || 0);
+                const avgLoadTime = isL1L2 ? (cacheData.l1AverageLoadTime || 0) : (cacheData.averageLoadTime || 0);
+                
+                const hitRateColor = hitRate > 80 ? '#28a745' : hitRate > 50 ? '#ffc107' : '#dc3545';
+                const cacheTypeColor = isL1L2 ? '#007bff' : '#6c757d';
+
+                container.innerHTML += `
+                    <div class="stat-item">
+                        <h3>${cacheName}</h3>
+                        <div class="stat-value" style="color: ${hitRateColor}">${hitRate.toFixed(1)}%</div>
+                        <div class="stat-label">Hit Rate</div>
+                        <div style="margin-top: 10px; font-size: 0.9em;">
+                            <div style="color: ${cacheTypeColor}; font-weight: bold; margin-bottom: 5px;">
+                                ${cacheData.type || 'Unknown'}
+                            </div>
+                            <div>Requests: ${requestCount}</div>
+                            <div>Hits: ${hitCount}</div>
+                            <div>Misses: ${missCount}</div>
+                            <div>Size: ${size}</div>
+                            <div>Avg Load: ${avgLoadTime.toFixed(2)}ms</div>
+                            ${isL1L2 ? `<div style="color: #28a745;">Redis: ${cacheData.redisEnabled ? 'ON' : 'OFF'}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function clearCache() {
+            try {
+                await fetch('/api/admin/cache/products', { method: 'DELETE' });
+                await fetch('/api/admin/cache/categories', { method: 'DELETE' });
+                showStatus('Cache cleared successfully', 'success');
+                refreshStats();
+            } catch (error) {
+                showStatus('Error clearing cache: ' + error.message, 'error');
+            }
+        }
+
+        async function testBestProducts() {
+            const startTime = performance.now();
+            try {
+                const response = await fetch('/api/products/best?limit=10');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                updatePerformanceChart(responseTime);
+                showTestResult(`Best Products: ${responseTime}ms`);
+            } catch (error) {
+                showTestResult(`Best Products Error: ${error.message}`);
+            }
+        }
+
+        async function testCategories() {
+            const startTime = performance.now();
+            try {
+                const response = await fetch('/api/products/categories');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                updatePerformanceChart(responseTime);
+                showTestResult(`Categories: ${responseTime}ms`);
+            } catch (error) {
+                showTestResult(`Categories Error: ${error.message}`);
+            }
+        }
+
+        async function performanceTest() {
+            showTestResult('Running performance test...');
+            const results = [];
+            
+            // Clear cache first
+            await clearCache();
+            
+            // Run 5 consecutive tests
+            for (let i = 1; i <= 5; i++) {
+                const startTime = performance.now();
+                await fetch('/api/products/best?limit=5');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                results.push(`Request ${i}: ${responseTime}ms`);
+                updatePerformanceChart(responseTime);
+                
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            showTestResult(results.join('<br>'));
+            refreshStats();
+        }
+
+        function updatePerformanceChart(responseTime) {
+            const requestNumber = performanceData.length + 1;
+            performanceData.push(responseTime);
+            
+            performanceChart.data.labels.push(`Req ${requestNumber}`);
+            performanceChart.data.datasets[0].data.push(responseTime);
+            
+            // Keep only last 20 data points
+            if (performanceChart.data.labels.length > 20) {
+                performanceChart.data.labels.shift();
+                performanceChart.data.datasets[0].data.shift();
+            }
+            
+            performanceChart.update();
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function showTestResult(result) {
+            document.getElementById('testResults').innerHTML = result;
+        }
+
+        function toggleAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                document.getElementById('autoRefreshStatus').textContent = 'Auto Refresh: OFF';
+            } else {
+                autoRefreshInterval = setInterval(refreshStats, 5000);
+                document.getElementById('autoRefreshStatus').textContent = 'Auto Refresh: ON (5s)';
+            }
+        }
+
+        // Initial load
+        refreshStats();
+    </script>
+</body>
+</html>
