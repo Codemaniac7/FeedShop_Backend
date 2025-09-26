@@ -6,6 +6,9 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * 상품 관련 캐시 관리 통합 서비스
  * - 수동 캐시 무효화
@@ -144,5 +147,61 @@ public class ProductCacheService {
                 }
             }
         });
+    }
+
+    /**
+     * 캐시 통계 정보 반환 (API용)
+     */
+    public Object getCacheStats() {
+        Map<String, Object> allStats = new HashMap<>();
+        
+        cacheManager.getCacheNames().forEach(cacheName -> {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                Map<String, Object> cacheStats = new HashMap<>();
+                
+                if (cache instanceof com.cMall.feedShop.config.TieredCache) {
+                    // 이중 캐시인 경우
+                    var nativeCache = cache.getNativeCache();
+                    if (nativeCache instanceof com.github.benmanes.caffeine.cache.Cache) {
+                        var caffeineCache = (com.github.benmanes.caffeine.cache.Cache<?, ?>) nativeCache;
+                        var stats = caffeineCache.stats();
+                        
+                        cacheStats.put("type", "Tiered (Caffeine + Redis)");
+                        cacheStats.put("l1RequestCount", stats.requestCount());
+                        cacheStats.put("l1HitCount", stats.hitCount());
+                        cacheStats.put("l1MissCount", stats.missCount());
+                        cacheStats.put("l1HitRate", Math.round(stats.hitRate() * 10000.0) / 100.0);
+                        cacheStats.put("l1AverageLoadTime", Math.round(stats.averageLoadPenalty() / 1_000_000.0 * 100.0) / 100.0);
+                        cacheStats.put("l1Size", caffeineCache.estimatedSize());
+                        cacheStats.put("redisEnabled", true);
+                    }
+                } else {
+                    // 단일 캐시인 경우
+                    var nativeCache = cache.getNativeCache();
+                    if (nativeCache instanceof com.github.benmanes.caffeine.cache.Cache) {
+                        var caffeineCache = (com.github.benmanes.caffeine.cache.Cache<?, ?>) nativeCache;
+                        var stats = caffeineCache.stats();
+                        
+                        cacheStats.put("type", "Caffeine Only");
+                        cacheStats.put("requestCount", stats.requestCount());
+                        cacheStats.put("hitCount", stats.hitCount());
+                        cacheStats.put("missCount", stats.missCount());
+                        cacheStats.put("hitRate", Math.round(stats.hitRate() * 10000.0) / 100.0);
+                        cacheStats.put("averageLoadTime", Math.round(stats.averageLoadPenalty() / 1_000_000.0 * 100.0) / 100.0);
+                        cacheStats.put("size", caffeineCache.estimatedSize());
+                        cacheStats.put("redisEnabled", false);
+                    } else {
+                        cacheStats.put("type", nativeCache.getClass().getSimpleName());
+                        cacheStats.put("size", "N/A");
+                        cacheStats.put("redisEnabled", false);
+                    }
+                }
+                
+                allStats.put(cacheName, cacheStats);
+            }
+        });
+        
+        return allStats;
     }
 }
