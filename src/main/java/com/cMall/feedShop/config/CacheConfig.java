@@ -38,13 +38,23 @@ public class CacheConfig {
     private long redisTtlMinutes;
 
     /**
+     * 이중 캐시 매니저 (L1: Caffeine + L2: Redis)
+     */
+    @Bean
+    @Primary
+    public CacheManager tieredCacheManager(RedisConnectionFactory redisConnectionFactory) {
+        CacheManager l1CacheManager = createCaffeineCacheManager();
+        CacheManager l2CacheManager = redisEnabled ? createRedisCacheManager(redisConnectionFactory) : null;
+        
+        return new TieredCacheManager(l1CacheManager, l2CacheManager, redisEnabled);
+    }
+
+    /**
      * Caffeine 캐시 매니저 (L1 캐시)
      * - 애플리케이션 레벨 캐시
      * - 매우 빠른 응답속도
      */
-    @Bean
-    @Primary
-    public CacheManager caffeineCacheManager() {
+    private CacheManager createCaffeineCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         
         Caffeine<Object, Object> caffeineBuilder = Caffeine.newBuilder()
@@ -73,8 +83,7 @@ public class CacheConfig {
      * - 분산 캐시
      * - 여러 인스턴스 간 데이터 공유
      */
-    @Bean
-    public CacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory) {
+    private CacheManager createRedisCacheManager(RedisConnectionFactory redisConnectionFactory) {
         if (!redisEnabled) {
             return null;
         }
