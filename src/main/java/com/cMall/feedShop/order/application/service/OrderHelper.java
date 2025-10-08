@@ -134,7 +134,7 @@ public class OrderHelper {
                 .collect(Collectors.toSet());
 
         // 2. DB(ProductOption) 에서 해당 옵션 ID 들을 조회한다.
-        List<ProductOption> options = productOptionRepository.findAllByOptionIdIn(optionIds);
+        List<ProductOption> options = productOptionRepository.findAllByOptionIdInWithPessimisticLock(optionIds);
 
         // 3. 조회한 옵션들이 정확히 존재하는지 확인한다.
         if (options.size() != optionIds.size()) {
