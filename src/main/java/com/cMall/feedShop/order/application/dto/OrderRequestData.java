@@ -18,10 +18,6 @@ public class OrderRequestData {
     private String deliveryMessage;
 
     private Integer usedPoints;
-    private String paymentMethod;
-    private String cardNumber;
-    private String cardExpiry;
-    private String cardCvc;
 
     private BigDecimal deliveryFee;
 
@@ -37,10 +33,6 @@ public class OrderRequestData {
 
                 // 결제 정보
                 .usedPoints(request.getUsedPoints())
-                .paymentMethod(request.getPaymentMethod())
-                .cardNumber(request.getCardNumber())
-                .cardExpiry(request.getCardExpiry())
-                .cardCvc(request.getCardCvc())
 
                 // 배송비 (장바구니 주문은 요청에 포함)
                 .deliveryFee(request.getDeliveryFee())
@@ -59,10 +51,6 @@ public class OrderRequestData {
 
                 // 결제 정보
                 .usedPoints(request.getUsedPoints())
-                .paymentMethod(request.getPaymentMethod())
-                .cardNumber(request.getCardNumber())
-                .cardExpiry(request.getCardExpiry())
-                .cardCvc(request.getCardCvc())
 
                 // 배송비 (직접 주문은 서버에서 계산)
                 .deliveryFee(request.getDeliveryFee())

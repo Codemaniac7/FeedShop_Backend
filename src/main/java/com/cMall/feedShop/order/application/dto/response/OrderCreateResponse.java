@@ -18,7 +18,6 @@ public class OrderCreateResponse {
     private BigDecimal deliveryFee;
     private Integer usedPoints;
     private Integer earnedPoints;
-    private String paymentMethod;
     private LocalDateTime orderedAt;
 
     public static OrderCreateResponse from(Order order) {
@@ -29,7 +28,6 @@ public class OrderCreateResponse {
                 .deliveryFee(order.getDeliveryFee())
                 .usedPoints(order.getUsedPoints())
                 .earnedPoints(order.getEarnedPoints())
-                .paymentMethod(order.getPaymentMethod())
                 .orderedAt(order.getCreatedAt())
                 .build();
     }

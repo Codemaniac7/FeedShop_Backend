@@ -14,6 +14,8 @@ import com.cMall.feedShop.order.domain.exception.OrderException;
 import com.cMall.feedShop.order.domain.model.Order;
 import com.cMall.feedShop.order.domain.model.OrderItem;
 import com.cMall.feedShop.order.domain.repository.OrderRepository;
+import com.cMall.feedShop.payment.application.dto.request.PaymentRequestDto;
+import com.cMall.feedShop.payment.application.service.PaymentService;
 import com.cMall.feedShop.product.domain.model.ProductImage;
 import com.cMall.feedShop.product.domain.model.ProductOption;
 import com.cMall.feedShop.user.domain.enums.UserRole;
@@ -44,6 +46,7 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final OrderRepository orderRepository;
     private final OrderHelper orderHelper;
+    private final PaymentService paymentService;
 
     /**
      * 주문 생성
@@ -76,16 +79,20 @@ public class OrderService {
         // 6. 주문 및 주문 아이템 생성
         Order order = orderHelper.createAndSaveOrder(currentUser, OrderRequestData.from(request), calculation, adapters, optionMap, imageMap);
 
-        // 7. 주문 후 처리
+        // 7. 결제 처리
+        PaymentRequestDto paymentRequest = new PaymentRequestDto(order.getOrderId(), request.getPaymentMethod());
+        paymentService.processPayment(paymentRequest);
+
+        // 8. 주문 후 처리
         orderHelper.processPostOrder(currentUser, adapters, optionMap, calculation, order.getOrderId());
 
-        // 8. 장바구니 아이템 삭제
+        // 9. 장바구니 아이템 삭제
         cartItemRepository.deleteAll(selectedCartItems);
 
-        // 9. 뱃지 자동 수여 체크
+        // 10. 뱃지 자동 수여 체크
         orderHelper.checkAndAwardBadgesAfterOrder(currentUser.getId(), order.getOrderId());
 
-        // 10. 주문 생성 응답 반환
+        // 11. 주문 생성 응답 반환
         OrderCreateResponse response = OrderCreateResponse.from(order);
         log.info("주문 생성 완료 - orderId: {}, userId: {}, 총금액: {}",
                 order.getOrderId(), currentUser.getId(), calculation.getFinalAmount());
