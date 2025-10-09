@@ -156,6 +156,7 @@ jobs:
             -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml \
             -Dsonar.junit.reportPaths=build/test-results/test \
             -Dsonar.qualitygate.wait=false \
+            -Dsonar.pullrequest.github.token=${{ github.token }} \
             $SONAR_PARAMS
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
