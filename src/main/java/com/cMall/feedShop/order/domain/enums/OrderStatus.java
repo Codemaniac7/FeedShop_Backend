@@ -11,11 +11,35 @@ public enum OrderStatus {
         // 배송 중, 취소로 변경 가능하다.
         @Override
         public boolean canChangeTo(OrderStatus newStatus) {
-            return newStatus == SHIPPED || newStatus == CANCELLED;
+            return newStatus == SHIPPED || newStatus == CANCELLED || newStatus == PAID || newStatus == PAYMENT_FAILED;
         }
 
         // 유저는 주문됨 상태에서
         // 취소로만 변경 가능하다.
+        @Override
+        public boolean canUserChangeTo(OrderStatus newStatus) {
+            return newStatus == CANCELLED;
+        }
+    },
+    // 결제 완료
+    PAID {
+        @Override
+        public boolean canChangeTo(OrderStatus newStatus) {
+            return newStatus == SHIPPED || newStatus == CANCELLED;
+        }
+
+        @Override
+        public boolean canUserChangeTo(OrderStatus newStatus) {
+            return false;
+        }
+    },
+    // 결제 실패
+    PAYMENT_FAILED {
+        @Override
+        public boolean canChangeTo(OrderStatus newStatus) {
+            return false;
+        }
+
         @Override
         public boolean canUserChangeTo(OrderStatus newStatus) {
             return newStatus == CANCELLED;

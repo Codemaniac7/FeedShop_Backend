@@ -329,10 +329,6 @@ public class OrderHelper {
                 .recipientName(request.getRecipientName())
                 .recipientPhone(request.getRecipientPhone())
                 .deliveryMessage(request.getDeliveryMessage())
-                .paymentMethod(request.getPaymentMethod())
-                .cardNumber(request.getCardNumber())
-                .cardExpiry(request.getCardExpiry())
-                .cardCvc(request.getCardCvc())
                 .build();
     }
 

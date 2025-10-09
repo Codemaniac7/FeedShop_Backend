@@ -1,7 +1,6 @@
 package com.cMall.feedShop.order.application.dto.response;
 
 import com.cMall.feedShop.order.application.dto.response.info.OrderItemDetailInfo;
-import com.cMall.feedShop.order.application.dto.response.info.PaymentInfo;
 import com.cMall.feedShop.order.application.dto.response.info.ShippingInfo;
 import com.cMall.feedShop.order.domain.enums.OrderStatus;
 import com.cMall.feedShop.order.domain.model.Order;
@@ -30,7 +29,6 @@ public class OrderDetailResponse {
     private BigDecimal totalPrice;
     private BigDecimal finalPrice;
     private ShippingInfo shippingInfo;
-    private PaymentInfo paymentInfo;
     private List<OrderItemDetailInfo> items;
 
     public static OrderDetailResponse from(Order order) {
@@ -65,12 +63,6 @@ public class OrderDetailResponse {
                         .deliveryDetailAddress(order.getDeliveryDetailAddress())
                         .deliveryMessage(order.getDeliveryMessage())
                         .build())
-                .paymentInfo(PaymentInfo.builder()
-                        .paymentMethod(order.getPaymentMethod())
-                        .cardNumber(maskCardNumber(order.getCardNumber()))
-                        .cardExpiry(order.getCardExpiry())
-                        .cardCvc(order.getCardCvc())
-                        .build())
                 .items(order.getOrderItems().stream()
                         .map(orderItem -> OrderItemDetailInfo.builder()
                                 .orderItemId(orderItem.getOrderItemId())
@@ -91,16 +83,5 @@ public class OrderDetailResponse {
                                 .build())
                         .toList())
                 .build();
-    }
-
-    // 카드 번호는 마스킹 처리를 한다.
-    private static String maskCardNumber(String cardNumber) {
-        // 이미 유효성 검증에서 검증하기 때문에 null 이나 4 이하로 올 가능성은 낮음.
-        // 하지만 혹시 모르는 상황을 위한 방어 코드 처리.
-        if (cardNumber == null || cardNumber.length() < 4) {
-            return cardNumber;
-        }
-
-        return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
     }
 }

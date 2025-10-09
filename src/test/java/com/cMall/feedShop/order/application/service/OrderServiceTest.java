@@ -14,6 +14,7 @@ import com.cMall.feedShop.order.domain.exception.OrderException;
 import com.cMall.feedShop.order.domain.model.Order;
 import com.cMall.feedShop.order.domain.model.OrderItem;
 import com.cMall.feedShop.order.domain.repository.OrderRepository;
+import com.cMall.feedShop.payment.application.service.PaymentService;
 import com.cMall.feedShop.product.domain.enums.*;
 import com.cMall.feedShop.product.domain.model.Product;
 import com.cMall.feedShop.product.domain.model.ProductImage;
@@ -62,6 +63,8 @@ class OrderServiceTest {
     private OrderRepository orderRepository; // 주문 저장소
     @Mock
     private OrderHelper orderHelper; // 공통 주문 서비스
+    @Mock
+    private PaymentService paymentService; // 결제 서비스
 
     // 테스트에서 공통으로 사용할 데이터들
     private User testUser; // 테스트용 사용자
@@ -127,6 +130,9 @@ class OrderServiceTest {
         // 주문 생성 및 저장이 성공한다고 설정
         given(orderHelper.createAndSaveOrder(any(), any(), any(), any(), any(), any())).willReturn(testOrder);
 
+        // 결제 처리가 성공한다고 설정
+        given(paymentService.processPayment(any())).willReturn(null);
+
         // 주문 후 처리가 성공한다고 설정
         willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
 
@@ -155,8 +161,9 @@ class OrderServiceTest {
         verify(orderHelper).calculateOrderAmount(any(), any(), anyInt()); // 5. 금액 계산
         verify(orderHelper).validatePointUsage(any(), anyInt()); // 6. 포인트 검증
         verify(orderHelper).createAndSaveOrder(any(), any(), any(), any(), any(), any()); // 7. 주문 생성
-        verify(orderHelper).processPostOrder(any(), any(), any(), any(), any()); // 8. 후처리
-        verify(cartItemRepository).deleteAll(testCartItems); // 9. 장바구니 삭제
+        verify(paymentService).processPayment(any()); // 8. 결제 처리
+        verify(orderHelper).processPostOrder(any(), any(), any(), any(), any()); // 9. 후처리
+        verify(cartItemRepository).deleteAll(testCartItems); // 10. 장바구니 삭제
     }
 
     /**
@@ -500,9 +507,6 @@ class OrderServiceTest {
         ReflectionTestUtils.setField(request, "deliveryMessage", "문 앞에 놓아주세요"); // 배송 메시지
         ReflectionTestUtils.setField(request, "deliveryFee", BigDecimal.valueOf(3000)); // 배송비: 3000원
         ReflectionTestUtils.setField(request, "paymentMethod", "카드"); // 결제 방법
-        ReflectionTestUtils.setField(request, "cardNumber", "1234567890123456"); // 카드 번호
-        ReflectionTestUtils.setField(request, "cardExpiry", "1225"); // 카드 만료일
-        ReflectionTestUtils.setField(request, "cardCvc", "123"); // CVC 번호
         return request;
     }
 
@@ -536,10 +540,6 @@ class OrderServiceTest {
                 .recipientName("홍길동") // 받는 사람
                 .recipientPhone("010-1234-5678") // 전화번호
                 .deliveryMessage("문 앞에 놓아주세요") // 배송 메시지
-                .paymentMethod("카드") // 결제 방법
-                .cardNumber("1234567890123456") // 카드 번호
-                .cardExpiry("1225") // 카드 만료일
-                .cardCvc("123") // CVC
                 .build();
         ReflectionTestUtils.setField(order, "orderId", 1L); // 주문 ID 설정
         return order;
