@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-@Profile({"dev", "local", "test"})
+@Profile({ "dev", "local", "test" })
 public class MockStorageService implements StorageService {
 
     @Value("${app.cdn.base-url}")

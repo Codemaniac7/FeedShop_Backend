@@ -13,7 +13,7 @@ import java.util.concurrent.Callable;
  */
 @Slf4j
 public class TieredCache implements Cache {
-    
+
     private final String name;
     private final Cache l1Cache; // Caffeine
     private final Cache l2Cache; // Redis (nullable)
@@ -90,7 +90,7 @@ public class TieredCache implements Cache {
     public void put(Object key, @Nullable Object value) {
         // L1, L2 모두에 저장
         l1Cache.put(key, value);
-        
+
         if (redisEnabled && l2Cache != null) {
             try {
                 l2Cache.put(key, value);
@@ -117,7 +117,7 @@ public class TieredCache implements Cache {
     public void evict(Object key) {
         // L1, L2 모두에서 제거
         l1Cache.evict(key);
-        
+
         if (redisEnabled && l2Cache != null) {
             try {
                 l2Cache.evict(key);
@@ -134,7 +134,7 @@ public class TieredCache implements Cache {
     public void clear() {
         // L1, L2 모두 클리어
         l1Cache.clear();
-        
+
         if (redisEnabled && l2Cache != null) {
             try {
                 l2Cache.clear();
