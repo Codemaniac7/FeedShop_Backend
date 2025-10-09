@@ -147,7 +147,7 @@ jobs:
             SONAR_PARAMS="-Dsonar.branch.name=${{ github.ref_name }}"
           fi
 
-          ./gradlew sonar \
+          ./gradlew sonar --info \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -156,6 +156,7 @@ jobs:
             -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml \
             -Dsonar.junit.reportPaths=build/test-results/test \
             -Dsonar.qualitygate.wait=false \
+            -Dsonar.log.level=DEBUG \
             -Dsonar.pullrequest.github.token=${{ github.token }} \
             $SONAR_PARAMS
         env:
