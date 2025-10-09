@@ -66,20 +66,8 @@ public class Order extends BaseTimeEntity {
     @Column(name = "delivery_message")
     private String deliveryMessage;
 
-    @Column(name = "payment_method", nullable = false)
-    private String paymentMethod;
-
     @Column(name = "currency", nullable = false)
     private String currency = "KRW"; // 기본 통화는 한국 원화(KRW)
-
-    @Column(name = "card_number")
-    private String cardNumber;
-
-    @Column(name = "card_expiry")
-    private String cardExpiry;
-
-    @Column(name = "card_cvc")
-    private String cardCvc;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -87,8 +75,7 @@ public class Order extends BaseTimeEntity {
     @Builder
     public Order(User user, OrderStatus status, BigDecimal finalPrice, BigDecimal deliveryFee, BigDecimal totalPrice,
                  Integer usedPoints, Integer earnedPoints, String deliveryAddress, String deliveryDetailAddress,
-                 String postalCode, String recipientName, String recipientPhone, String deliveryMessage,
-                 String paymentMethod, String cardNumber, String cardExpiry, String cardCvc) {
+                 String postalCode, String recipientName, String recipientPhone, String deliveryMessage) {
         this.user = user;
         this.status = status;
         this.finalPrice = finalPrice;
@@ -102,10 +89,6 @@ public class Order extends BaseTimeEntity {
         this.recipientName = recipientName;
         this.recipientPhone = recipientPhone;
         this.deliveryMessage = deliveryMessage;
-        this.paymentMethod = paymentMethod;
-        this.cardNumber = cardNumber;
-        this.cardExpiry = cardExpiry;
-        this.cardCvc = cardCvc;
         this.currency = "KRW";
     }
 

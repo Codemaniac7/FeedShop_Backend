@@ -1,6 +1,5 @@
 package com.cMall.feedShop.order.application.dto.request;
 
-import com.cMall.feedShop.order.application.validator.ValidCardPayment;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -12,7 +11,6 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @NoArgsConstructor
-@ValidCardPayment
 public class OrderCreateRequest {
     @NotBlank(message = "배송 주소는 필수입니다.")
     @Schema(description = "배송 주소", example = "서울시 영등포구", required = true)
@@ -51,13 +49,4 @@ public class OrderCreateRequest {
     @NotBlank(message = "결제 방법은 필수입니다.")
     @Schema(description = "결제 방법", example = "카드", allowableValues = {"카드", "무통장입금", "간편결제", "휴대폰결제"})
     private String paymentMethod;
-
-    @Schema(description = "카드 번호 (카드 결제 시 필수, 10~14자리 숫자)", example = "1234567890123")
-    private String cardNumber;
-
-    @Schema(description = "카드 유효기간 (카드 결제 시 필수, 4자리 숫자", example = "0123")
-    private String cardExpiry = "";
-
-    @Schema(description = "카드 CVC (카드 결제 시 필수, 3자리 숫자", example = "123")
-    private String cardCvc = "";
 }

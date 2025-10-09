@@ -427,9 +427,6 @@ class DirectOrderServiceTest {
         ReflectionTestUtils.setField(request, "deliveryMessage", "문 앞에 놓아주세요"); // 배송 메시지
         ReflectionTestUtils.setField(request, "deliveryFee", BigDecimal.valueOf(3000)); // 배송비: 3000원
         ReflectionTestUtils.setField(request, "paymentMethod", "카드"); // 결제 방법
-        ReflectionTestUtils.setField(request, "cardNumber", "1234567890123456"); // 카드 번호
-        ReflectionTestUtils.setField(request, "cardExpiry", "1225"); // 카드 만료일
-        ReflectionTestUtils.setField(request, "cardCvc", "123"); // CVC 번호
         return request;
     }
 
@@ -510,10 +507,6 @@ class DirectOrderServiceTest {
                 .recipientName("홍길동") // 받는 사람
                 .recipientPhone("010-1234-5678") // 전화번호
                 .deliveryMessage("문 앞에 놓아주세요") // 배송 메시지
-                .paymentMethod("카드") // 결제 방법
-                .cardNumber("1234567890123456") // 카드 번호
-                .cardExpiry("1225") // 카드 만료일
-                .cardCvc("123") // CVC
                 .build();
         ReflectionTestUtils.setField(order, "orderId", 1L); // 주문 ID 설정
         return order;

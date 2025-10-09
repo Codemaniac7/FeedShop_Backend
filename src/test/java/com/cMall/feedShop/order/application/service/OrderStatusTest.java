@@ -75,7 +75,6 @@ class OrderStatusTest {
                 .recipientName("김구매자")
                 .recipientPhone("010-1234-5678")
                 .deliveryAddress("서울시 강남구")
-                .paymentMethod("카드")
                 .build();
         ReflectionTestUtils.setField(testOrder, "orderId", 100L);
 
