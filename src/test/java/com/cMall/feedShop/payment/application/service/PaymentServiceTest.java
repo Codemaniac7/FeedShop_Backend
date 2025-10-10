@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -69,11 +70,12 @@ class PaymentServiceTest {
     }
 
     @Test
+    @Transactional
     @DisplayName("결제 성공")
     void processPayment_Success() {
         // Given
         PaymentRequestDto request = new PaymentRequestDto(1L, "CARD");
-        given(orderRepository.findById(1L)).willReturn(Optional.of(testOrder));
+        given(orderRepository.findByIdWithPessimisticLock(1L)).willReturn(Optional.of(testOrder));
         given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> {
             Payment payment = invocation.getArgument(0);
             ReflectionTestUtils.setField(payment, "paymentId", 1L);
@@ -94,11 +96,12 @@ class PaymentServiceTest {
     }
 
     @Test
+    @Transactional
     @DisplayName("결제 실패 - 주문을 찾을 수 없음")
     void processPayment_OrderNotFound() {
         // Given
         PaymentRequestDto request = new PaymentRequestDto(999L, "CARD");
-        given(orderRepository.findById(999L)).willReturn(Optional.empty());
+        given(orderRepository.findByIdWithPessimisticLock(999L)).willReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> paymentService.processPayment(request))
@@ -107,11 +110,12 @@ class PaymentServiceTest {
     }
 
     @Test
+    @Transactional
     @DisplayName("결제 실패 - 결제 수단이 유효하지 않음")
     void processPayment_PaymentFailure() {
         // Given
         PaymentRequestDto request = new PaymentRequestDto(1L, "INVALID_METHOD");
-        given(orderRepository.findById(1L)).willReturn(Optional.of(testOrder));
+        given(orderRepository.findByIdWithPessimisticLock(1L)).willReturn(Optional.of(testOrder));
         given(paymentRepository.save(any(Payment.class))).willAnswer(invocation -> {
             Payment payment = invocation.getArgument(0);
             ReflectionTestUtils.setField(payment, "paymentId", 1L);
