@@ -12,20 +12,21 @@ import com.cMall.feedShop.payment.domain.model.PaymentStatus;
 import com.cMall.feedShop.payment.domain.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class PaymentService {
 
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public PaymentResponseDto processPayment(PaymentRequestDto request) {
-        Order order = orderRepository.findById(request.getOrderId())
+        Order order = orderRepository.findByIdWithPessimisticLock(request.getOrderId())
                 .orElseThrow(() -> new OrderException(ErrorCode.ORDER_NOT_FOUND));
 
         // Simulate external payment processing

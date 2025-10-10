@@ -4,9 +4,12 @@ import com.cMall.feedShop.order.domain.enums.OrderStatus;
 import com.cMall.feedShop.order.domain.model.Order;
 import com.cMall.feedShop.order.infrastructure.repository.OrderQueryRepository;
 import com.cMall.feedShop.user.domain.model.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
@@ -36,4 +39,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, OrderQueryR
     
     // 특정 사용자의 총 주문 금액 조회 (COMPLETED 상태만)
     Long findTotalOrderAmountByUserId(Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.orderId = :orderId")
+    Optional<Order> findByIdWithPessimisticLock(Long orderId);
 }
