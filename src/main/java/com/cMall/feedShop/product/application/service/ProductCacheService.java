@@ -1,11 +1,12 @@
 package com.cMall.feedShop.product.application.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,9 +18,13 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProductCacheService {
     private final CacheManager cacheManager;
+
+    @Autowired(required = false)
+    public ProductCacheService(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
 
     // ========== AOP 기반 자동 캐시 무효화 ==========
 
@@ -109,6 +114,7 @@ public class ProductCacheService {
      * 특정 카테고리의 베스트 상품 캐시 무효화
      */
     public void evictCategoryBestProductsCache(Long categoryId) {
+        if (cacheManager == null) return;
         var cache = cacheManager.getCache("bestProducts");
         if (cache != null) {
             // 해당 카테고리와 관련된 모든 캐시 키를 찾아서 무효화
@@ -123,6 +129,10 @@ public class ProductCacheService {
      * 캐시 통계 정보 조회 (모니터링용)
      */
     public void logCacheStats() {
+        if (cacheManager == null) {
+            log.info("=== 캐시 비활성화 상태 ===");
+            return;
+        }
         log.info("=== 캐시 통계 정보 ===");
 
         cacheManager.getCacheNames().forEach(cacheName -> {
@@ -153,6 +163,9 @@ public class ProductCacheService {
      * 캐시 통계 정보 반환 (API용)
      */
     public Object getCacheStats() {
+        if (cacheManager == null) {
+            return Collections.singletonMap("status", "CACHE_DISABLED");
+        }
         Map<String, Object> allStats = new HashMap<>();
         
         cacheManager.getCacheNames().forEach(cacheName -> {

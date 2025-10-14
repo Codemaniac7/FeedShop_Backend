@@ -1,10 +1,16 @@
 package com.cMall.feedShop.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.cache.support.NoOpCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -18,9 +24,13 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Configuration
 @EnableCaching
 public class CacheConfig {
+
+    @Value("${spring.cache.caffeine.enabled:true}")
+    private boolean caffeineEnabled;
 
     @Value("${spring.cache.redis.enabled:true}")
     private boolean redisEnabled;
@@ -37,66 +47,63 @@ public class CacheConfig {
     @Value("${spring.cache.redis.time-to-live:60}")
     private long redisTtlMinutes;
 
-    /**
-     * 이중 캐시 매니저 (L1: Caffeine + L2: Redis)
-     */
     @Bean
     @Primary
-    public CacheManager tieredCacheManager(RedisConnectionFactory redisConnectionFactory) {
-        CacheManager l1CacheManager = createCaffeineCacheManager();
-        CacheManager l2CacheManager = redisEnabled ? createRedisCacheManager(redisConnectionFactory) : null;
-        
-        return new TieredCacheManager(l1CacheManager, l2CacheManager, redisEnabled);
+    public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
+        if (caffeineEnabled && redisEnabled) {
+            log.info("Initializing Tiered Cache (L1: Caffeine, L2: Redis)");
+            CacheManager l1CacheManager = createCaffeineCacheManager();
+            CacheManager l2CacheManager = createRedisCacheManager(redisConnectionFactory);
+            return new TieredCacheManager(l1CacheManager, l2CacheManager, true);
+        } else if (caffeineEnabled) {
+            log.info("Initializing L1 Cache only (Caffeine)");
+            return createCaffeineCacheManager();
+        } else if (redisEnabled) {
+            log.info("Initializing L2 Cache only (Redis)");
+            return createRedisCacheManager(redisConnectionFactory);
+        } else {
+            log.info("All caching is disabled.");
+            return new NoOpCacheManager();
+        }
     }
 
-    /**
-     * Caffeine 캐시 매니저 (L1 캐시)
-     * - 애플리케이션 레벨 캐시
-     * - 매우 빠른 응답속도
-     */
-    private CacheManager createCaffeineCacheManager() {
+    private CaffeineCacheManager createCaffeineCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
-        
         Caffeine<Object, Object> caffeineBuilder = Caffeine.newBuilder()
                 .maximumSize(caffeineMaximumSize)
                 .expireAfterWrite(caffeineExpireAfterWriteMinutes, TimeUnit.MINUTES);
-        
         if (caffeineRecordStats) {
             caffeineBuilder.recordStats();
         }
-        
         cacheManager.setCaffeine(caffeineBuilder);
-        
-        // 캐시 이름 등록
-        cacheManager.setCacheNames(java.util.List.of(
-                "categories",           // 카테고리 목록
-                "bestProducts",         // 베스트 상품 목록
-                "popularProducts",      // 인기 상품 페이지
-                "availableEvents"       // 이벤트 (기존)
-        ));
-        
+        cacheManager.setCacheNames(java.util.List.of("categories", "bestProducts", "popularProducts", "availableEvents"));
         return cacheManager;
     }
 
-    /**
-     * Redis 캐시 매니저 (L2 캐시)
-     * - 분산 캐시
-     * - 여러 인스턴스 간 데이터 공유
-     */
-    private CacheManager createRedisCacheManager(RedisConnectionFactory redisConnectionFactory) {
-        if (!redisEnabled) {
-            return null;
-        }
+    private RedisCacheManager createRedisCacheManager(RedisConnectionFactory redisConnectionFactory) {
+        System.out.println("\n!!!!!!!!!! 1. ENTERING createRedisCacheManager !!!!!!!!!!\n");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.activateDefaultTyping(
+                LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY
+        );
+
+        System.out.println("\n!!!!!!!!!! 2. ObjectMapper CONFIGURED FOR PROPERTY-BASED TYPING !!!!!!!!!!\n");
+
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(redisTtlMinutes))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()));
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
+
+        System.out.println("\n!!!!!!!!!! 3. RedisCacheConfiguration CREATED !!!!!!!!!!\n");
 
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(config)
                 .build();
     }
-} 
+}
