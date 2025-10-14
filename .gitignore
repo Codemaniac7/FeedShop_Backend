@@ -62,3 +62,5 @@ keystore.p12
 
 # etc
 sonar_debug.log
+ngrinder-controller-*.war
+ngrinder-agent-*/
