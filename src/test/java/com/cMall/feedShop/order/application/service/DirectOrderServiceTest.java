@@ -1,5 +1,6 @@
 package com.cMall.feedShop.order.application.service;
 
+import com.cMall.feedShop.cart.domain.repository.CartItemRepository;
 import com.cMall.feedShop.common.exception.ErrorCode;
 import com.cMall.feedShop.order.application.calculator.OrderCalculation;
 import com.cMall.feedShop.order.application.dto.request.DirectOrderCreateRequest;
@@ -47,6 +48,9 @@ class DirectOrderServiceTest {
     // Mock 객체들 (실제 서비스 대신 가짜 객체 사용)
     @Mock
     private OrderHelper orderHelper; // 공통 주문 서비스
+
+    @Mock
+    private CartItemRepository cartItemRepository;
 
     // 테스트에서 공통으로 사용할 데이터들
     private User testUser; // 테스트용 사용자
@@ -96,6 +100,11 @@ class DirectOrderServiceTest {
         // 사용자 검증이 성공한다고 설정
         given(orderHelper.validateUser("testUser")).willReturn(testUser);
 
+        // cartItemRepository Mock 설정
+        given(cartItemRepository.findAllByCartItemIdInAndCartUserId(any(), anyLong()))
+                .willReturn(new ArrayList<>()); // 빈 리스트 또는 실제 CartItem 리스트
+
+
         // 상품 옵션 조회가 성공한다고 설정
         Map<Long, ProductOption> optionMap = new HashMap<>();
         optionMap.put(1L, testProductOption);
@@ -107,7 +116,7 @@ class DirectOrderServiceTest {
         given(orderHelper.getProductImages(any())).willReturn(imageMap);
 
         // 주문 금액 계산이 성공한다고 설정
-        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(testCalculation);
+        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(createTestOrderCalculation());
 
         // 포인트 검증이 통과한다고 설정 (문제없음)
         willDoNothing().given(orderHelper).validatePointUsage(any(), anyInt());
@@ -116,7 +125,8 @@ class DirectOrderServiceTest {
         given(orderHelper.createAndSaveOrder(any(), any(), any(), any(), any(), any())).willReturn(testOrder);
 
         // 주문 후 처리가 성공한다고 설정 (재고 차감, 포인트 처리)
-        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
+        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any());
+        willDoNothing().given(orderHelper).publishBadgeAwardEvent(anyLong(), anyLong());
 
         // When: 실제 테스트 실행 단계
         OrderCreateResponse response = directOrderService.createDirectOrder(testRequest, "testUser");
@@ -139,7 +149,8 @@ class DirectOrderServiceTest {
         verify(orderHelper).calculateOrderAmount(any(), any(), anyInt()); // 4. 금액 계산
         verify(orderHelper).validatePointUsage(any(), anyInt()); // 5. 포인트 검증
         verify(orderHelper).createAndSaveOrder(any(), any(), any(), any(), any(), any()); // 6. 주문 생성
-        verify(orderHelper).processPostOrder(any(), any(), any(), any(), any()); // 7. 후처리
+        verify(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any()); // 7. 후처리
+        verify(orderHelper).publishBadgeAwardEvent(anyLong(), anyLong()); // 8. 뱃지 이벤트 발행 검증
     }
 
     /**
@@ -183,10 +194,12 @@ class DirectOrderServiceTest {
         given(orderHelper.validateUser("testUser")).willReturn(testUser);
         given(orderHelper.getValidProductOptions(any())).willReturn(Map.of(1L, testProductOption));
         given(orderHelper.getProductImages(any())).willReturn(Map.of(1L, testProductImage));
-        given(orderHelper.calculateOrderAmount(any(), any(), eq(1000))).willReturn(calculationWithPoints);
+        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(calculationWithPoints);
         willDoNothing().given(orderHelper).validatePointUsage(testUser, 1000);
         given(orderHelper.createAndSaveOrder(any(), any(), any(), any(), any(), any())).willReturn(testOrder);
-        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
+        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any());
+        given(cartItemRepository.findAllByCartItemIdInAndCartUserId(any(), anyLong()))
+                .willReturn(new ArrayList<>()); // 빈 리스트 또는 실제 CartItem 리스트
 
         // When: 테스트 실행
         OrderCreateResponse response = directOrderService.createDirectOrder(requestWithPoints, "testUser");
@@ -304,7 +317,7 @@ class DirectOrderServiceTest {
 
         // 재고 부족으로 예외 발생
         willThrow(new OrderException(ErrorCode.OUT_OF_STOCK))
-                .given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
+                .given(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any());
 
         // When & Then
         assertThatThrownBy(() -> directOrderService.createDirectOrder(testRequest, "testUser"))
@@ -362,24 +375,46 @@ class DirectOrderServiceTest {
         OrderItemRequest item1 = new OrderItemRequest();
         ReflectionTestUtils.setField(item1, "optionId", 1L);
         ReflectionTestUtils.setField(item1, "quantity", 2);
+        ReflectionTestUtils.setField(item1, "imageId", 1L);
 
         OrderItemRequest item2 = new OrderItemRequest();
         ReflectionTestUtils.setField(item2, "optionId", 1L); // 같은 옵션
         ReflectionTestUtils.setField(item2, "quantity", 3);
+        ReflectionTestUtils.setField(item2, "imageId", 1L);
 
         DirectOrderCreateRequest request = new DirectOrderCreateRequest();
         ReflectionTestUtils.setField(request, "items", List.of(item1, item2));
         ReflectionTestUtils.setField(request, "deliveryAddress", "서울시 강남구");
         ReflectionTestUtils.setField(request, "usedPoints", 0);
+        ReflectionTestUtils.setField(request, "cartItemIds", List.of(1L, 2L));
 
         // Mock 설정
         given(orderHelper.validateUser("testUser")).willReturn(testUser);
         given(orderHelper.getValidProductOptions(any())).willReturn(Map.of(1L, testProductOption));
         given(orderHelper.getProductImages(any())).willReturn(Map.of(1L, testProductImage));
-        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(testCalculation);
+        given(cartItemRepository.findAllByCartItemIdInAndCartUserId(any(), anyLong()))
+                .willReturn(new ArrayList<>()); // 빈 리스트 또는 실제 CartItem 리스트
+
+        // Merged item
+        OrderItemRequest mergedItem = new OrderItemRequest();
+        ReflectionTestUtils.setField(mergedItem, "optionId", 1L);
+        ReflectionTestUtils.setField(mergedItem, "quantity", 5);
+        ReflectionTestUtils.setField(mergedItem, "imageId", 1L);
+
+        // Calculate the expected total amount after merging the items
+        BigDecimal expectedTotalAmount = testProductOption.getProduct().getPrice().multiply(BigDecimal.valueOf(5));
+        OrderCalculation expectedCalculation = OrderCalculation.builder()
+                .totalAmount(expectedTotalAmount)
+                .finalAmount(expectedTotalAmount)
+                .actualUsedPoints(0)
+                .earnedPoints(1250) // 50000 * 5 * 0.005 = 1250
+                .build();
+
+        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(expectedCalculation);
         willDoNothing().given(orderHelper).validatePointUsage(any(), anyInt());
+        willDoNothing().given(orderHelper).publishBadgeAwardEvent(anyLong(), anyLong());
         given(orderHelper.createAndSaveOrder(any(), any(), any(), any(), any(), any())).willReturn(testOrder);
-        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
+        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any());
 
         // When
         OrderCreateResponse response = directOrderService.createDirectOrder(request, "testUser");
@@ -427,6 +462,8 @@ class DirectOrderServiceTest {
         ReflectionTestUtils.setField(request, "deliveryMessage", "문 앞에 놓아주세요"); // 배송 메시지
         ReflectionTestUtils.setField(request, "deliveryFee", BigDecimal.valueOf(3000)); // 배송비: 3000원
         ReflectionTestUtils.setField(request, "paymentMethod", "카드"); // 결제 방법
+        ReflectionTestUtils.setField(request, "cartItemIds", List.of(1L, 2L)); // 임의의 ID 리스트 추가
+
         return request;
     }
 
@@ -436,6 +473,7 @@ class DirectOrderServiceTest {
     private DirectOrderCreateRequest createEmptyDirectOrderRequest() {
         DirectOrderCreateRequest request = new DirectOrderCreateRequest();
         ReflectionTestUtils.setField(request, "items", new ArrayList<>()); // 빈 주문 아이템 목록
+        ReflectionTestUtils.setField(request, "cartItemIds", List.of(1L, 2L));
         return request;
     }
 

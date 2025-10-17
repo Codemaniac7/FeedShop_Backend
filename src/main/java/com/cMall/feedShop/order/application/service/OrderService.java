@@ -10,7 +10,9 @@ import com.cMall.feedShop.order.application.dto.request.OrderStatusUpdateRequest
 import com.cMall.feedShop.order.application.dto.response.*;
 import com.cMall.feedShop.order.application.calculator.OrderCalculation;
 import com.cMall.feedShop.order.domain.enums.OrderStatus;
+import com.cMall.feedShop.order.domain.exception.OrderCreationException;
 import com.cMall.feedShop.order.domain.exception.OrderException;
+import com.cMall.feedShop.order.domain.exception.PaymentException;
 import com.cMall.feedShop.order.domain.model.Order;
 import com.cMall.feedShop.order.domain.model.OrderItem;
 import com.cMall.feedShop.order.domain.repository.OrderRepository;
@@ -35,7 +37,6 @@ import java.util.Map;
 
 import static com.cMall.feedShop.order.application.constants.OrderConstants.MAX_ORDER_QUANTITY;
 
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -50,6 +51,7 @@ public class OrderService {
 
     /**
      * 주문 생성
+     * 
      * @param request 주문 생성 요청 정보
      * @param loginId 현재 로그인된 사용자 정보
      * @return 주문 생성 응답 정보
@@ -58,41 +60,42 @@ public class OrderService {
     public OrderCreateResponse createOrder(OrderCreateRequest request, String loginId) {
         log.info("주문 생성 시작 - 사용포인트: {}", request.getUsedPoints());
 
-        // 1. 현재 사용자 조회를 하고 사용자 권한을 검증
+        // 1. 사용자 검증 및 데이터 준비
         User currentUser = orderHelper.validateUser(loginId);
-
-        // 2. 선택된 장바구니 아이템 조회 (selected = true 인 아이템들만)
         List<CartItem> selectedCartItems = getSelectedCartItems(currentUser.getId());
         validateCartItems(selectedCartItems);
-
-        // 3. 어댑터로 변환해서 OrderCommonService 사용
         List<OrderItemData> adapters = OrderItemData.fromCartItems(selectedCartItems);
         Map<Long, ProductOption> optionMap = orderHelper.getValidProductOptions(adapters);
         Map<Long, ProductImage> imageMap = orderHelper.getProductImages(adapters);
 
-        // 4. 주문 금액 계산
+        // 2. 주문 금액 계산
         OrderCalculation calculation = orderHelper.calculateOrderAmount(adapters, optionMap, request.getUsedPoints());
 
-        // 5. 포인트 사용 가능 여부 확인
+        // 3. 포인트 사용 가능 여부 확인
         orderHelper.validatePointUsage(currentUser, calculation.getActualUsedPoints());
 
-        // 6. 주문 및 주문 아이템 생성
-        Order order = orderHelper.createAndSaveOrder(currentUser, OrderRequestData.from(request), calculation, adapters, optionMap, imageMap);
+        // 4. 주문 및 주문 아이템 생성
+        Order order = orderHelper.createAndSaveOrder(currentUser, OrderRequestData.from(request), calculation, adapters,
+                optionMap, imageMap);
 
-        // 7. 결제 처리
-        PaymentRequestDto paymentRequest = new PaymentRequestDto(order.getOrderId(), request.getPaymentMethod());
-        paymentService.processPayment(paymentRequest);
+        // 5. 결제 처리
+        try {
+            PaymentRequestDto paymentRequest = new PaymentRequestDto(order.getOrderId(), request.getPaymentMethod());
+            paymentService.processPayment(paymentRequest);
+        } catch (PaymentException e) {
+            log.error("결제 처리 실패 - orderId: {}, errorCode: {}, message: {}",
+                    order.getOrderId(), e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+            throw new OrderCreationException("결제 처리 중 오류 발생: " + e.getErrorCode().getMessage(), e);
+        }
 
-        // 8. 주문 후 처리
-        orderHelper.processPostOrder(currentUser, adapters, optionMap, calculation, order.getOrderId());
+        // 6. 주문 후 처리 (재고 차감, 포인트 처리, 장바구니 삭제)
+        orderHelper.processPostOrder(currentUser, adapters, optionMap, calculation, order.getOrderId(),
+                selectedCartItems);
 
-        // 9. 장바구니 아이템 삭제
-        cartItemRepository.deleteAll(selectedCartItems);
+        // 7. 뱃지 수여 이벤트 발행
+        orderHelper.publishBadgeAwardEvent(currentUser.getId(), order.getOrderId());
 
-        // 10. 뱃지 자동 수여 체크
-        orderHelper.checkAndAwardBadgesAfterOrder(currentUser.getId(), order.getOrderId());
-
-        // 11. 주문 생성 응답 반환
+        // 8. 주문 생성 응답 반환
         OrderCreateResponse response = OrderCreateResponse.from(order);
         log.info("주문 생성 완료 - orderId: {}, userId: {}, 총금액: {}",
                 order.getOrderId(), currentUser.getId(), calculation.getFinalAmount());
@@ -102,6 +105,7 @@ public class OrderService {
 
     /**
      * 주문 목록 조회 (사용자)
+     * 
      * @param page
      * @param size
      * @param status
@@ -136,6 +140,7 @@ public class OrderService {
 
     /**
      * 주문 목록 조회 (판매자)
+     * 
      * @param page
      * @param size
      * @param status
@@ -199,6 +204,7 @@ public class OrderService {
 
     /**
      * 주문 상세 조회
+     * 
      * @param orderId
      * @param loginId
      * @return
@@ -220,6 +226,7 @@ public class OrderService {
 
     /**
      * 판매자 주문 상태 변경
+     * 
      * @param orderId
      * @param request
      * @param loginId
@@ -252,13 +259,15 @@ public class OrderService {
 
     /**
      * 사용자 주문 상태 변경
+     * 
      * @param orderId
      * @param request
      * @param loginId
      * @return
      */
     @Transactional
-    public OrderStatusUpdateResponse updateUserOrderStatus(Long orderId, OrderStatusUpdateRequest request, String loginId) {
+    public OrderStatusUpdateResponse updateUserOrderStatus(Long orderId, OrderStatusUpdateRequest request,
+            String loginId) {
         log.info("사용자 주문 상태 변경 시작 - orderId: {}, newStatus: {}", orderId, request.getStatus());
 
         // 1. 현재 사용자 조회 및 권한 검증
@@ -304,6 +313,7 @@ public class OrderService {
 
     /**
      * 현재 사용자 조회 및 사용자 권한 검증
+     * 
      * @param loginId 현재 로그인된 사용자 정보
      * @return 검증된 사용자 정보
      */
@@ -320,6 +330,7 @@ public class OrderService {
 
     /**
      * 현재 사용자 조회 및 판매자 권한 검증
+     * 
      * @param loginId 현재 로그인된 사용자 정보
      * @return 검증된 사용자 정보
      */
@@ -337,6 +348,7 @@ public class OrderService {
     /**
      * 선택된 장바구니 아이템 조회
      * - 현재 사용자의 장바구니에서 선택된 아이템들만 조회
+     * 
      * @param userId 현재 사용자 ID
      * @return 선택된 장바구니 아이템 리스트
      */
@@ -350,6 +362,7 @@ public class OrderService {
     /**
      * 장바구니 아이템이 비어있는지 검증
      * - 선택된 장바구니 아이템이 없으면 예외 처리
+     * 
      * @param selectedCartItems 선택된 장바구니 아이템 리스트
      */
     private void validateCartItems(List<CartItem> selectedCartItems) {

@@ -1,5 +1,7 @@
 package com.cMall.feedShop.order.application.service;
 
+import com.cMall.feedShop.cart.domain.model.CartItem;
+import com.cMall.feedShop.cart.domain.repository.CartItemRepository;
 import com.cMall.feedShop.common.exception.ErrorCode;
 import com.cMall.feedShop.order.application.dto.OrderItemData;
 import com.cMall.feedShop.order.application.dto.OrderRequestData;
@@ -16,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +32,7 @@ import static com.cMall.feedShop.order.application.constants.OrderConstants.MAX_
 public class DirectOrderService {
 
     private final OrderHelper orderHelper;
+    private final CartItemRepository cartItemRepository;
 
     /**
      * 직접 주문 생성 (장바구니 없이 상품을 직접 선택하여 주문)
@@ -39,14 +45,23 @@ public class DirectOrderService {
         // 1. 현재 사용자 조회를 하고 사용자 권한을 검증
         User currentUser = orderHelper.validateUser(loginId);
 
-        // 2. 주문 아이템 목록을 조회
+        // 2. 주문 아이템 목록을 조회하고, 중복된 아이템을 합산
         List<OrderItemRequest> orderItemRequests = request.getItems();
         validateOrderItems(orderItemRequests);
+        orderItemRequests = mergeDuplicateOrderItems(orderItemRequests);
 
         // 3. 어댑터로 변환해서 OrderCommonService 사용
         List<OrderItemData> adapters = OrderItemData.fromOrderItemRequests(orderItemRequests);
         Map<Long, ProductOption> optionMap = orderHelper.getValidProductOptions(adapters);
         Map<Long, ProductImage> imageMap = orderHelper.getProductImages(adapters);
+
+        List<Long> cartItemIds = request.getCartItemIds(); // DirectOrderCreateRequest에 이 필드가 있어야 함
+
+        List<CartItem> selectedCartItems = cartItemRepository.findAllByCartItemIdInAndCartUserId(
+                cartItemIds,
+                currentUser.getId()
+        );
+
 
         // 4. 주문 금액 계산
         OrderCalculation calculation = orderHelper.calculateOrderAmount(adapters, optionMap, request.getUsedPoints());
@@ -58,13 +73,28 @@ public class DirectOrderService {
         Order order = orderHelper.createAndSaveOrder(currentUser, OrderRequestData.from(request), calculation, adapters, optionMap, imageMap);
 
         // 7. 재고 차감
-        orderHelper.processPostOrder(currentUser, adapters, optionMap, calculation, order.getOrderId());
+        orderHelper.processPostOrder(currentUser, adapters, optionMap, calculation, order.getOrderId(), Collections.emptyList());
 
         // 8. 뱃지 자동 수여 체크
-        orderHelper.checkAndAwardBadgesAfterOrder(currentUser.getId(), order.getOrderId());
+        orderHelper.publishBadgeAwardEvent(currentUser.getId(), order.getOrderId());
 
         // 9. 주문 생성 응답 반환
         return OrderCreateResponse.from(order);
+    }
+
+    private List<OrderItemRequest> mergeDuplicateOrderItems(List<OrderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            return items;
+        }
+
+        Map<Long, OrderItemRequest> mergedItems = new LinkedHashMap<>();
+        for (OrderItemRequest item : items) {
+            mergedItems.merge(item.getOptionId(), new OrderItemRequest(item.getOptionId(), item.getImageId(), item.getQuantity()), (existingItem, newItem) -> {
+                existingItem.setQuantity(existingItem.getQuantity() + newItem.getQuantity());
+                return existingItem;
+            });
+        }
+        return new ArrayList<>(mergedItems.values());
     }
 
     // 주문 아이템이 비어있는지 검증 (직접 주문용)
