@@ -33,7 +33,12 @@ jobs:
       - name: Clean and Test
         run: |
           ./gradlew clean
+<<<<<<< Updated upstream
           ./gradlew test jacocoTestReport --info
+=======
+          ./gradlew test --info --stacktrace --continue
+          ./gradlew jacocoTestReport
+>>>>>>> Stashed changes
         env:
           SPRING_PROFILES_ACTIVE: test
           APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL }}
