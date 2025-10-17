@@ -122,7 +122,7 @@ class OrderServiceTest {
         given(orderHelper.getProductImages(any())).willReturn(imageMap);
 
         // 주문 금액 계산이 성공한다고 설정
-        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(testCalculation);
+        given(orderHelper.calculateOrderAmount(any(), any(), anyInt())).willReturn(createTestOrderCalculation());
 
         // 포인트 검증이 통과한다고 설정
         willDoNothing().given(orderHelper).validatePointUsage(any(), anyInt());
@@ -133,11 +133,11 @@ class OrderServiceTest {
         // 결제 처리가 성공한다고 설정
         given(paymentService.processPayment(any())).willReturn(null);
 
-        // 주문 후 처리가 성공한다고 설정
-        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
+        // 주문 후 처리가 성공한다고 설정 (재고 차감, 포인트 처리, 장바구니 삭제 포함)
+        willDoNothing().given(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any());
 
-        // 장바구니 아이템 삭제가 성공한다고 설정
-        willDoNothing().given(cartItemRepository).deleteAll(testCartItems);
+        // 뱃지 수여 이벤트 발행이 성공한다고 설정
+        willDoNothing().given(orderHelper).publishBadgeAwardEvent(anyLong(), anyLong());
 
         // When: 실제 테스트 실행
         OrderCreateResponse response = orderService.createOrder(testRequest, "testUser");
@@ -162,8 +162,8 @@ class OrderServiceTest {
         verify(orderHelper).validatePointUsage(any(), anyInt()); // 6. 포인트 검증
         verify(orderHelper).createAndSaveOrder(any(), any(), any(), any(), any(), any()); // 7. 주문 생성
         verify(paymentService).processPayment(any()); // 8. 결제 처리
-        verify(orderHelper).processPostOrder(any(), any(), any(), any(), any()); // 9. 후처리
-        verify(cartItemRepository).deleteAll(testCartItems); // 10. 장바구니 삭제
+        verify(orderHelper).processPostOrder(any(), any(), any(), any(), any(), any()); // 9. 후처리 (장바구니 삭제 포함)
+        verify(orderHelper).publishBadgeAwardEvent(anyLong(), anyLong()); // 10. 뱃지 수여 이벤트 발행
     }
 
     /**
@@ -384,7 +384,7 @@ class OrderServiceTest {
 
         // 재고 부족으로 예외 발생
         willThrow(new OrderException(ErrorCode.OUT_OF_STOCK))
-                .given(orderHelper).processPostOrder(any(), any(), any(), any(), any());
+                .given(orderHelper).processPostOrder(any(), any(), any(), any(), any(), eq(cartItems));
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(testRequest, "testUser"))
@@ -486,9 +486,14 @@ class OrderServiceTest {
         Cart cart = new Cart(testUser);
         ReflectionTestUtils.setField(cart, "cartId", 1L);
 
-        // 장바구니 아이템 생성 (운동화 2개, 선택됨)
-        CartItem cartItem = new CartItem(cart, testProductOption.getOptionId(), 2L, 2); // 수량 2개, 선택됨
+        // 장바구니 아이템 생성
+        CartItem cartItem = new CartItem();
+        ReflectionTestUtils.setField(cartItem, "cart", cart);
+        ReflectionTestUtils.setField(cartItem, "optionId", testProductOption.getOptionId());
+        ReflectionTestUtils.setField(cartItem, "imageId", 2L);
+        ReflectionTestUtils.setField(cartItem, "quantity", 2);
         ReflectionTestUtils.setField(cartItem, "cartItemId", 1L);
+        ReflectionTestUtils.setField(cartItem, "selected", true); // selected를 명시적으로 true로 설정
 
         return List.of(cartItem);
     }

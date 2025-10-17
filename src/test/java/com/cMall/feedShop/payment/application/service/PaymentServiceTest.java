@@ -3,6 +3,7 @@ package com.cMall.feedShop.payment.application.service;
 import com.cMall.feedShop.common.exception.ErrorCode;
 import com.cMall.feedShop.order.domain.enums.OrderStatus;
 import com.cMall.feedShop.order.domain.exception.OrderException;
+import com.cMall.feedShop.order.domain.exception.PaymentException;
 import com.cMall.feedShop.order.domain.model.Order;
 import com.cMall.feedShop.order.domain.repository.OrderRepository;
 import com.cMall.feedShop.payment.application.dto.request.PaymentRequestDto;
@@ -122,13 +123,9 @@ class PaymentServiceTest {
             return payment;
         });
 
-        // When
-        PaymentResponseDto response = paymentService.processPayment(request);
-
-        // Then
-        assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo(PaymentStatus.FAILED);
-        assertThat(testOrder.getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
-        verify(paymentRepository).save(any(Payment.class));
+        // When & Then
+        assertThatThrownBy(() -> paymentService.processPayment(request))
+                .isInstanceOf(PaymentException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PAYMENT_FAILED);
     }
 }

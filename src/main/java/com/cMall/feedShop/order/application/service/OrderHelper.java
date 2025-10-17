@@ -1,10 +1,13 @@
 package com.cMall.feedShop.order.application.service;
 
+import com.cMall.feedShop.cart.domain.model.CartItem;
+import com.cMall.feedShop.cart.domain.repository.CartItemRepository;
 import com.cMall.feedShop.common.exception.ErrorCode;
 import com.cMall.feedShop.order.application.dto.OrderItemData;
 import com.cMall.feedShop.order.application.dto.OrderRequestData;
 import com.cMall.feedShop.order.application.calculator.OrderCalculation;
 import com.cMall.feedShop.order.domain.enums.OrderStatus;
+import com.cMall.feedShop.order.domain.event.OrderCompletedEvent;
 import com.cMall.feedShop.order.domain.exception.OrderException;
 import com.cMall.feedShop.order.domain.model.Order;
 import com.cMall.feedShop.order.domain.model.OrderItem;
@@ -27,6 +30,7 @@ import com.cMall.feedShop.user.domain.repository.UserPointRepository;
 import com.cMall.feedShop.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,8 +61,11 @@ public class OrderHelper {
     private final DiscountCalculator discountCalculator;
     private final ProductImageRepository productImageRepository;
     private final OrderRepository orderRepository;
+    private final CartItemRepository cartItemRepository;
     private final UserLevelService userLevelService;
     private final BadgeService badgeService;
+    private final ApplicationEventPublisher applicationEventPublisher;
+
 
     /**
      * 사용자 검증
@@ -380,12 +387,15 @@ public class OrderHelper {
      * @param calculation 주문 금액 계산 결과
      * @param orderId 주문 ID (포인트 거래 내역 연결용)
      */
-    public void processPostOrder(User user, List<OrderItemData> adapters, Map<Long, ProductOption> optionMap, OrderCalculation calculation, Long orderId) {
+    public void processPostOrder(User user, List<OrderItemData> adapters, Map<Long, ProductOption> optionMap, OrderCalculation calculation, Long orderId, List<CartItem> cartItems) {
         // 재고 차감
         decreaseStock(adapters, optionMap);
 
         // 포인트 처리
         processUserPoints(user, calculation.getActualUsedPoints(), calculation.getEarnedPoints(), orderId);
+
+        // 장바구니 아이템 삭제
+        cartItemRepository.deleteAll(cartItems);
     }
 
     /**
@@ -450,5 +460,12 @@ public class OrderHelper {
             // 뱃지 수여 실패가 주문 프로세스에 영향을 주지 않도록 예외 처리
             log.error("뱃지 자동 수여 중 오류 발생 - userId: {}, error: {}", userId, e.getMessage());
         }
+    }
+
+    /**
+     * 뱃지 수여 이벤트 발행
+     */
+    public void publishBadgeAwardEvent(Long userId, Long orderId) {
+        applicationEventPublisher.publishEvent(new OrderCompletedEvent(this, userId, orderId));
     }
 }
