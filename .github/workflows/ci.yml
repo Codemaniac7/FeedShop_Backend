@@ -33,7 +33,8 @@ jobs:
       - name: Clean and Test
         run: |
           ./gradlew clean
-          ./gradlew test jacocoTestReport --info --stacktrace --tests="*" --exclude-tests="*ConcurrencyTest*"
+          ./gradlew test --info --stacktrace --continue
+          ./gradlew jacocoTestReport
         env:
           SPRING_PROFILES_ACTIVE: test
           APP_VERIFICATION_URL: ${{ secrets.APP_VERIFICATION_URL || 'http://localhost:8080' }}
