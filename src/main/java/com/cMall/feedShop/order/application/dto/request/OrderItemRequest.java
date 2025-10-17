@@ -12,6 +12,12 @@ import lombok.Setter;
 @NoArgsConstructor
 public class OrderItemRequest {
 
+public OrderItemRequest(Long optionId, Long imageId, Integer quantity) {
+        this.optionId = optionId;
+        this.imageId = imageId;
+        this.quantity = quantity;
+    }
+
     @NotNull(message = "상품 옵션 ID는 필수입니다.")
     @Min(value = 1, message = "상품 옵션 ID는 1 이상이어야 합니다.")
     @Schema(description = "상품 옵션 ID", example = "123", required = true)

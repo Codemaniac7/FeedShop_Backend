@@ -17,4 +17,8 @@ public class DirectOrderCreateRequest extends OrderCreateRequest {
     @Valid
     @Schema(description = "주문할 상품 목록", required = true)
     private List<OrderItemRequest> items;
+
+    @NotEmpty(message = "주문할 장바구니 아이템 ID는 1개 이상이어야 합니다.")
+    @Schema(description = "주문할 CartItem ID 목록 (장바구니에서 주문 시 필요)", required = true)
+    private List<Long> cartItemIds;
 }
